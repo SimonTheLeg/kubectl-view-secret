@@ -2,9 +2,9 @@ version: 2
 
 references:
   app_name: &app_name
-    kubectl-view-secret
+    kubectl-view_secret #underscore is required so it is properly picked up by kubectl
   app_version: &app_version
-    v1.0.0
+    v1.1.0
   workspace_root: &workspace_root
     /tmp/workspace
   attach_workspace: &attach_workspace
