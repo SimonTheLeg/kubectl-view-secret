@@ -1,0 +1,63 @@
+version: 2
+
+references:
+  app_name: &app_name
+    kubectl-view-secret
+  app_version: &app_version
+    v1.0.0
+  workspace_root: &workspace_root
+    /tmp/workspace
+  attach_workspace: &attach_workspace
+    attach_workspace:
+      at: *workspace_root
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master
+
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.11
+    environment:
+      APP_NAME: *app_name
+      APP_VERSION: *app_version
+      WORKSPACE_ROOT: *workspace_root
+    steps:
+      - checkout
+      - run:
+          name: Build app
+          command: | 
+            mkdir ${WORKSPACE_ROOT}
+            env GOOS=darwin GOARCH=amd64 go build -o ${WORKSPACE_ROOT}/${APP_NAME}-darwin-64 -ldflags "-X main.version=${APP_VERSION}"
+            env GOOS=linux GOARCH=amd64 go build -o ${WORKSPACE_ROOT}/${APP_NAME}-linux-64 -ldflags "-X main.version=${APP_VERSION}"
+            env GOOS=windows GOARCH=386 go build -o ${WORKSPACE_ROOT}/${APP_NAME}-windows -ldflags "-X main.version=${APP_VERSION}"
+      - persist_to_workspace:
+          root: *workspace_root
+          paths:
+            - ./*
+  
+  publish-github-release:
+    docker:
+      - image: simontheleg/github-go-releaser
+    environment:
+      APP_NAME: *app_name
+      APP_VERSION: *app_version
+      WORKSPACE_ROOT: *workspace_root
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: Publish Release to Github
+          command: |
+            echo "Releasing version ${APP_VERSION}"
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${APP_VERSION} ./artifacts
