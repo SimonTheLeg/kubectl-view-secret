@@ -33,12 +33,12 @@ func connectToCluster() {
 
 	config, err := clientcmd.BuildConfigFromFlags("", cfgpath)
 	if err != nil {
-		panic(err.Error())
+		errorf("Failed to build clientconfig located at '%s': '%v'", cfgpath, err)
 	}
 
 	clientset, err = kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		errorf("Failed to build clientset: '%v'", err)
 	}
 }
 
@@ -62,18 +62,18 @@ func printSecretValue() {
 		kubeconfig, err := ioutil.ReadFile(cfgpath)
 
 		if err != nil {
-			panic(err.Error())
+			errorf("Could not retrieve config to determine current namespace: '%v'", err)
 		}
 
 		clientconfig, err := clientcmd.NewClientConfigFromBytes(kubeconfig)
 
 		if err != nil {
-			panic(err.Error())
+			errorf("Could not parese config to determine current namespace: '%v'", err)
 		}
 
 		secretnamespace, _, err = clientconfig.Namespace()
 		if err != nil {
-			panic(err.Error())
+			errorf("Could not retrieve namespace: '%v'", err)
 		}
 	}
 
@@ -86,4 +86,9 @@ func printSecretValue() {
 	for key, value := range secret.Data {
 		fmt.Printf(key + ": " + string(value) + "\n")
 	}
+}
+
+func errorf(msg string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, msg+"\n", args)
+	os.Exit(1)
 }
